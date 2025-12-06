@@ -1,4 +1,11 @@
+import sys
+import os
+
+# --- 1. SETUP PATHS (Must be first) ---
+# This tells Render: "Look inside the current folder for database.py and models.py"
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# --- 2. IMPORTS ---
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
@@ -11,12 +18,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from fastapi.middleware.cors import CORSMiddleware
 from artist import generate_romantic_image 
-import edge_tts # <--- NEW FREE TOOL
+import edge_tts 
 import base64
-import os
 import tempfile
 
-# --- 1. DATA MODELS ---
+# --- 3. DATA MODELS ---
 class Interaction(BaseModel):
     user_message: str
     mood: Optional[str] = "neutral"
@@ -28,7 +34,7 @@ class AgentResponse(BaseModel):
     image_url: Optional[str] = None 
     audio_data: Optional[str] = None
 
-# --- 2. LIFESPAN MANAGER ---
+# --- 4. LIFESPAN MANAGER ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -39,22 +45,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="WINGMAN: The Romantic AI Protocol", lifespan=lifespan)
 
-# --- CORS SETUP ---
+# --- 5. CORS SETUP ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://friendly-lamp-4j9wjjp7vgxxhqj66-5173.app.github.dev" 
-    ],
+    # Allow all origins for simplicity in deployment
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 3. BRAIN SETUP ---
+# --- 6. BRAIN SETUP ---
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
 
-# --- 4. THE PERSONALITY ---
+# --- 7. THE PERSONALITY ---
 base_system_prompt = """
 You are NOT an AI. You are acting as the user's boyfriend, 'Lala'.
 Target User: Your girlfriend.
@@ -67,33 +71,26 @@ prompt_template = ChatPromptTemplate.from_messages([
     ("human", "{user_input}")
 ])
 
-# --- HELPER: FREE VOICE GENERATOR (Edge TTS) ---
+# --- 8. HELPER: FREE VOICE GENERATOR ---
 async def generate_voice(text: str):
     try:
-        # Limit text length for speed
         short_text = text[:200]
-        
-        # We use a temp file because EdgeTTS saves to disk first
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
             temp_filename = tmp_file.name
 
-        # "en-US-GuyNeural" is a deep, masculine voice
         communicate = edge_tts.Communicate(short_text, "en-US-GuyNeural")
         await communicate.save(temp_filename)
 
-        # Read the file back as bytes
         with open(temp_filename, "rb") as audio_file:
             audio_bytes = audio_file.read()
             
-        # Clean up
         os.remove(temp_filename)
-
         return base64.b64encode(audio_bytes).decode("utf-8")
     except Exception as e:
         print(f"❌ Voice Error: {e}")
         return None
 
-# --- 5. ENDPOINTS ---
+# --- 9. ENDPOINTS ---
 @app.get("/")
 async def health_check():
     return {"status": "Wingman Systems Operational", "heartbeat": "steady"}
@@ -127,8 +124,8 @@ async def chat_endpoint(interaction: Interaction, db: AsyncSession = Depends(get
     })
     response_text = ai_msg.content
 
-    # C. VOICE GENERATION (Using Free Edge TTS)
-    print("🎙️ Generating Voice (Free Mode)...")
+    # C. VOICE GENERATION
+    print("🎙️ Generating Voice...")
     audio_base64 = await generate_voice(response_text)
 
     # D. MOOD & SAVE
