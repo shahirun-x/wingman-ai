@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // This points to your FastAPI backend
-const API_URL = "https://friendly-lamp-4j9wjjp7vgxxhqj66-8000.app.github.dev";
+const API_URL = "https://wingman-backend-xyz.onrender.com";
 
 export const sendMessage = async (message) => {
   try {
