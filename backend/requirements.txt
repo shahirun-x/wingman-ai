@@ -1,10 +1,9 @@
 fastapi
 uvicorn
-langgraph
-langchain-openai
 python-dotenv
-asyncpg
-psycopg2-binary
 sqlalchemy
 asyncpg
-python-dotenv
+langchain-openai
+langchain-core
+openai
+edge-tts
